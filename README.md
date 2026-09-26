@@ -431,3 +431,17 @@ privacy_preserving_threat_network/
 ├── .gitignore
 └── README.md
 ```
+
+## Deploy a Free Render Demo
+
+The repository includes a `render.yaml` Blueprint for a free Render web
+service. To deploy it, sign in to Render, create a new Blueprint, connect
+this GitHub repository on the `main` branch, and provide
+`BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` when prompted.
+Render generates the other required secrets and assigns the service a
+stable `onrender.com` URL.
+
+This demo uses SQLite on Render's temporary filesystem. The URL remains
+the same, but the free service can sleep after inactivity and its database
+can be erased on restart or redeploy. Use persistent database hosting for
+data that must survive those events.

@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: apex-fedshield
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:///./threat_intelligence.db
+      - key: PRIVACY_SECRET_KEY
+        generateValue: true
+      - key: PRIVACY_KEY_VERSION
+        value: "1"
+      - key: CLIENT_A_API_KEY
+        generateValue: true
+      - key: CLIENT_B_API_KEY
+        generateValue: true
+      - key: CLIENT_C_API_KEY
+        generateValue: true
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
