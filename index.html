@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Threat Network — Portal</title>
+  <meta name="description" content="Secure administration and client portal for the Privacy-Preserving Threat Intelligence Network." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ===========================
+       DESIGN TOKENS & RESET
+    =========================== */
+    :root {
+      --bg-base: #f2f5f0;
+      --bg-surface: #ffffff;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f7faf5;
+      --bg-glass: rgba(255,255,255,0.96);
+      --border: rgba(31,56,44,0.13);
+      --border-glow: rgba(19,125,96,0.35);
+
+      --aurora-cyan: #087e6e;
+      --aurora-blue: #176b61;
+      --aurora-indigo: #315e54;
+      --aurora-purple: #8d5e4b;
+      --aurora-green: #16805e;
+      --aurora-teal: #087e6e;
+      --aurora-red: #c44b3d;
+      --aurora-orange: #ad5d25;
+      --aurora-yellow: #96711b;
+
+      --text-primary: #26372f;
+      --text-secondary: #617168;
+      --text-muted: #8b9890;
+      --text-bright: #17271f;
+
+      --gradient-aurora: linear-gradient(120deg, #087e6e 0%, #16805e 58%, #a2c94b 100%);
+      --gradient-danger: linear-gradient(120deg, #c44b3d 0%, #ad5d25 100%);
+      --gradient-success: linear-gradient(120deg, #087e6e 0%, #16805e 100%);
+      --gradient-card: linear-gradient(145deg, #ffffff, #f8faf7);
+
+      --shadow-glow: 0 8px 24px rgba(17,94,72,0.11);
+      --shadow-card: 0 2px 10px rgba(29,55,42,0.055);
+      --shadow-deep: 0 24px 70px rgba(24,49,36,0.18);
+
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 10px;
+      --radius-xl: 14px;
+
+      --sidebar-w: 260px;
+      --topbar-h: 64px;
+      --transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+
+      /* Command-center environment layers */
+      --glass-hi: rgba(255,255,255,0.96);
+      --glass-mid: rgba(255,255,255,0.88);
+      --glass-lo: rgba(255,255,255,0.78);
+      --grid-line: rgba(19,94,71,0.055);
+      --scan-line: rgba(19,125,96,0.2);
+      --depth-blur-hi: blur(18px) saturate(115%);
+      --depth-blur-mid: blur(12px) saturate(110%);
+      --depth-blur-lo: blur(6px) saturate(105%);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; }
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: ''; position: fixed; top: -30%; left: -20%; width: 70%; height: 70%;
+      background: radial-gradient(ellipse, rgba(102,126,234,0.12) 0%, transparent 70%); pointer-events: none; z-index: 0;
+    }
+    body::after {
+      content: ''; position: fixed; bottom: -20%; right: -10%; width: 60%; height: 60%;
+      background: radial-gradient(ellipse, rgba(56,178,172,0.08) 0%, transparent 70%); pointer-events: none; z-index: 0;
+    }
+
+    /* ===========================
+       LIVE ENVIRONMENT SYSTEM
+       (background video + overlay + grid/scanline, shared by
+       both the login screen and the authenticated application)
+    =========================== */
+    .env-layer {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+      z-index: 0; pointer-events: none; overflow: hidden;
+    }
+    .env-layer canvas {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      display: block; pointer-events: none;
+    }
+    /* Cinematic dark overlay so foreground UI stays readable over either video */
+    .env-overlay {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(6,11,20,0.35) 0%, rgba(6,11,20,0.82) 65%, rgba(6,11,20,0.95) 100%),
+        linear-gradient(180deg, rgba(6,11,20,0.55) 0%, rgba(6,11,20,0.75) 100%);
+    }
+    /* Subtle animated grid — restrained, not gamey */
+    .env-grid {
+      position: absolute; inset: -2px;
+      background-image:
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 46px 46px;
+      -webkit-mask-image: radial-gradient(ellipse at 50% 30%, black 0%, transparent 75%);
+      mask-image: radial-gradient(ellipse at 50% 30%, black 0%, transparent 75%);
+      animation: gridDrift 26s linear infinite;
+      opacity: 0.6;
+    }
+    @keyframes gridDrift { from { background-position: 0 0, 0 0; } to { background-position: 46px 92px, 46px 92px; } }
+    /* Single slow scan sweep, not a strobing effect */
+    .env-scanline {
+      position: absolute; left: 0; right: 0; height: 140px; top: -140px;
+      background: linear-gradient(180deg, transparent 0%, var(--scan-line) 50%, transparent 100%);
+      opacity: 0.10; animation: scanSweep 9s ease-in-out infinite;
+    }
+    @keyframes scanSweep { 0% { top: -140px; } 55%,100% { top: 100%; } }
+    #env-login { z-index: 0; }
+    #env-app { z-index: 0; display: none; }
+    #env-app.active { display: block; }
+    #app, #login-screen, .portal-layout { position: relative; z-index: 1; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .env-grid, .env-scanline { animation: none !important; }
+    }
+    @media (max-width: 768px) {
+      .env-layer .env-overlay { backdrop-filter: none; }
+      .env-grid { background-size: 64px 64px; opacity: 0.35; animation: none; }
+      .env-scanline { display: none; }
+    }
+
+    h1, h2, h3, h4 { font-weight: 700; line-height: 1.2; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.1rem; }
+    p { line-height: 1.6; color: var(--text-secondary); }
+
+    #app { position: relative; z-index: 1; }
+
+    /* ===========================
+       LOGIN SCREEN
+    =========================== */
+    #login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+    }
+    .login-card {
+      position: relative;
+      background: var(--bg-glass);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: 3rem;
+      width: 100%;
+      max-width: 440px;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-deep), 0 0 80px rgba(102,126,234,0.1);
+      animation: slideUp 0.5s ease;
+    }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .login-logo { text-align: center; margin-bottom: 2rem; }
+    .login-logo .shield-icon {
+      width: 64px; height: 64px; background: var(--gradient-aurora); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; font-size: 1.8rem;
+      margin: 0 auto 1rem; box-shadow: 0 0 30px rgba(99,179,237,0.4); animation: pulse-glow 3s ease-in-out infinite;
+    }
+    @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 30px rgba(99,179,237,0.4); } 50% { box-shadow: 0 0 50px rgba(99,179,237,0.6), 0 0 80px rgba(102,126,234,0.2); } }
+    .login-logo h1 { font-size: 1.3rem; color: var(--text-bright); margin-bottom: 0.3rem; }
+    .login-logo p { font-size: 0.85rem; color: var(--text-secondary); }
+    
+    .login-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2); padding: 0.3rem; border-radius: var(--radius-sm); }
+    .login-tab { flex: 1; text-align: center; padding: 0.6rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-sm); color: var(--text-secondary); transition: var(--transition); }
+    .login-tab.active { background: var(--bg-card-hover); color: var(--text-bright); box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+
+    .form-group { margin-bottom: 1.25rem; }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+    .form-control { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem 1rem; color: var(--text-primary); font-family: var(--font-sans); font-size: 0.9rem; transition: var(--transition); outline: none; }
+    .form-control:focus { border-color: var(--aurora-cyan); background: rgba(99,179,237,0.05); box-shadow: 0 0 0 3px rgba(99,179,237,0.15); }
+    .form-control::placeholder { color: var(--text-muted); }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.7rem 1.5rem; border-radius: var(--radius-sm); border: none; font-family: var(--font-sans); font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: var(--transition); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--gradient-aurora); color: white; width: 100%; padding: 0.85rem; font-size: 0.95rem; box-shadow: 0 4px 20px rgba(102,126,234,0.3); }
+    .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(102,126,234,0.45); }
+    .btn-secondary { background: rgba(255,255,255,0.06); border: 1px solid var(--border); color: var(--text-secondary); }
+    .btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+    .btn-danger { background: rgba(252,129,129,0.12); border: 1px solid rgba(252,129,129,0.3); color: var(--aurora-red); }
+    .btn-success { background: rgba(72,187,120,0.12); border: 1px solid rgba(72,187,120,0.3); color: var(--aurora-green); }
+    .btn-warning { background: rgba(246,173,85,0.12); border: 1px solid rgba(246,173,85,0.3); color: var(--aurora-orange); }
+    .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+
+    .alert-error { background: rgba(252,129,129,0.1); border: 1px solid rgba(252,129,129,0.3); border-radius: var(--radius-sm); padding: 0.75rem 1rem; color: var(--aurora-red); font-size: 0.875rem; margin-bottom: 1rem; display: none; }
+    .alert-error.show { display: block; }
+    .alert-info { background: rgba(99,179,237,0.1); border: 1px solid rgba(99,179,237,0.3); border-radius: var(--radius-sm); padding: 0.75rem 1rem; color: var(--aurora-cyan); font-size: 0.875rem; margin-bottom: 1rem; }
+    .alert-warning { background: rgba(246,173,85,0.1); border: 1px solid rgba(246,173,85,0.3); border-radius: var(--radius-sm); padding: 0.75rem 1rem; color: var(--aurora-orange); font-size: 0.875rem; margin: 1rem 0; }
+
+    /* ===========================
+       PORTAL LAYOUTS
+    =========================== */
+    .portal-layout { display: none; min-height: 100vh; }
+    .portal-layout.active { display: flex; }
+
+    .sidebar { width: var(--sidebar-w); background: var(--bg-glass); border-right: 1px solid var(--border); backdrop-filter: blur(20px); position: fixed; top: 0; left: 0; height: 100vh; z-index: 100; display: flex; flex-direction: column; transition: transform 0.3s ease; }
+    .sidebar-brand { padding: 1.5rem 1.25rem; border-bottom: 1px solid var(--border); }
+    .sidebar-brand .brand-logo { display: flex; align-items: center; gap: 0.75rem; }
+    .brand-icon { width: 38px; height: 38px; background: var(--gradient-aurora); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+    .brand-text h3 { font-size: 0.9rem; color: var(--text-bright); font-weight: 700; }
+    .brand-text p { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
+
+    .sidebar-nav { flex: 1; padding: 1rem 0; overflow-y: auto; }
+    .nav-section-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); padding: 0.5rem 1.25rem 0.25rem; margin-top: 0.5rem; }
+    .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 1.25rem; margin: 0.1rem 0.5rem; border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: var(--transition); border: 1px solid transparent; }
+    .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+    .nav-item.active { background: rgba(99,179,237,0.1); border-color: rgba(99,179,237,0.2); color: var(--aurora-cyan); }
+    .nav-item .nav-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+    .nav-badge { margin-left: auto; background: rgba(99,179,237,0.2); color: var(--aurora-cyan); font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 99px; }
+
+    .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid var(--border); }
+    .user-card { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; border-radius: var(--radius-sm); }
+    .user-avatar { width: 36px; height: 36px; background: var(--gradient-aurora); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 700; flex-shrink: 0; }
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 0.68rem; color: var(--aurora-cyan); font-weight: 600; }
+    .logout-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem; padding: 0.25rem; transition: var(--transition); border-radius: 4px; }
+    .logout-btn:hover { color: var(--aurora-red); }
+
+    .main-content { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+    .topbar { height: var(--topbar-h); background: var(--bg-glass); border-bottom: 1px solid var(--border); backdrop-filter: blur(20px); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+    .topbar-title { font-size: 1.1rem; font-weight: 600; color: var(--text-bright); }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-badge { background: rgba(72,187,120,0.15); border: 1px solid rgba(72,187,120,0.3); color: var(--aurora-green); font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 99px; display: flex; align-items: center; gap: 0.3rem; }
+    .topbar-badge::before { content: ''; width: 6px; height: 6px; background: var(--aurora-green); border-radius: 50%; animation: blink 2s ease-in-out infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .page-content { padding: 2rem; flex: 1; }
+    .section { display: none; }
+    .section.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+    .section-header h2 { font-size: 1.5rem; color: var(--text-bright); }
+    .section-header p { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem; }
+
+    /* ===========================
+       STAT CARDS & TABLES
+    =========================== */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem; transition: var(--transition); position: relative; overflow: hidden; }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--gradient-aurora); opacity: 0; transition: var(--transition); }
+    .stat-card:hover { border-color: var(--border-glow); background: var(--bg-card-hover); }
+    .stat-card:hover::before { opacity: 1; }
+    .stat-icon { font-size: 1.5rem; margin-bottom: 0.75rem; }
+    .stat-value { font-size: 2rem; font-weight: 800; color: var(--text-bright); font-variant-numeric: tabular-nums; }
+    .stat-label { font-size: 0.78rem; color: var(--text-secondary); font-weight: 500; margin-top: 0.2rem; }
+    .stat-card.critical .stat-value { color: var(--aurora-red); }
+    .stat-card.high .stat-value { color: var(--aurora-orange); }
+    .stat-card.medium .stat-value { color: var(--aurora-yellow); }
+    .stat-card.success .stat-value { color: var(--aurora-green); }
+
+    .table-wrapper { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+    .table-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
+    .table-title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    thead th { padding: 0.75rem 1.25rem; text-align: left; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: var(--transition); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    tbody td { padding: 0.9rem 1.25rem; color: var(--text-primary); vertical-align: middle; }
+    .td-mono { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); }
+    .td-actions { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+
+    .badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+    .badge-active { background: rgba(72,187,120,0.15); color: var(--aurora-green); border: 1px solid rgba(72,187,120,0.3); }
+    .badge-active::before { background: var(--aurora-green); }
+    .badge-suspended { background: rgba(246,173,85,0.15); color: var(--aurora-orange); border: 1px solid rgba(246,173,85,0.3); }
+    .badge-suspended::before { background: var(--aurora-orange); }
+    .badge-revoked { background: rgba(252,129,129,0.15); color: var(--aurora-red); border: 1px solid rgba(252,129,129,0.3); }
+    .badge-revoked::before { background: var(--aurora-red); }
+    .badge-main-admin { background: rgba(159,122,234,0.15); color: var(--aurora-purple); border: 1px solid rgba(159,122,234,0.3); }
+    .badge-main-admin::before { background: var(--aurora-purple); }
+    .badge-admin { background: rgba(99,179,237,0.15); color: var(--aurora-cyan); border: 1px solid rgba(99,179,237,0.3); }
+    .badge-admin::before { background: var(--aurora-cyan); }
+    .badge-inactive { background: rgba(74,85,104,0.3); color: var(--text-muted); border: 1px solid rgba(74,85,104,0.3); }
+    .badge-inactive::before { background: var(--text-muted); }
+    .badge-critical { background: rgba(252,129,129,0.15); color: var(--aurora-red); border: 1px solid rgba(252,129,129,0.3); }
+    .badge-high { background: rgba(246,173,85,0.15); color: var(--aurora-orange); border: 1px solid rgba(246,173,85,0.3); }
+    .badge-medium { background: rgba(246,224,94,0.15); color: var(--aurora-yellow); border: 1px solid rgba(246,224,94,0.3); }
+    .badge-low { background: rgba(72,187,120,0.15); color: var(--aurora-green); border: 1px solid rgba(72,187,120,0.3); }
+
+    /* ===========================
+       FEED & AUDIT LOGS
+    =========================== */
+    .feed-grid { display: grid; gap: 0.75rem; }
+    .feed-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem 1.25rem; display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: start; transition: var(--transition); }
+    .feed-card:hover { border-color: var(--border-glow); }
+    .feed-severity { font-size: 0.7rem; writing-mode: vertical-rl; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; }
+    .feed-body h4 { font-size: 0.9rem; color: var(--text-bright); margin-bottom: 0.25rem; }
+    .feed-body p { font-size: 0.8rem; color: var(--text-secondary); }
+    .feed-meta { text-align: right; }
+    .feed-meta .feed-time { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); }
+
+    .audit-item { display: flex; gap: 1rem; align-items: flex-start; padding: 0.75rem 0; border-bottom: 1px solid var(--border); }
+    .audit-item:last-child { border-bottom: none; }
+    .audit-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
+    .audit-icon.success { background: rgba(72,187,120,0.15); }
+    .audit-icon.failure { background: rgba(252,129,129,0.15); }
+    .audit-icon.info { background: rgba(99,179,237,0.15); }
+    .audit-body { flex: 1; }
+    .audit-action { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); font-family: var(--font-mono); }
+    .audit-summary { font-size: 0.78rem; color: var(--text-secondary); margin-top: 0.2rem; }
+    .audit-time { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); white-space: nowrap; }
+
+    /* ===========================
+       CLIENT SUBMISSION FORM
+    =========================== */
+    .submit-form { max-width: 600px; background: var(--bg-card); padding: 2rem; border-radius: var(--radius-md); border: 1px solid var(--border); }
+    
+    /* ===========================
+       MODALS & UTILS
+    =========================== */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 1000; display: none; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.show { display: flex; animation: fadeIn 0.2s ease; }
+    .modal { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; width: 100%; max-width: 480px; box-shadow: var(--shadow-deep); animation: slideUp 0.3s ease; }
+    .modal-lg { max-width: 600px; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+    .modal-title { font-size: 1.1rem; color: var(--text-bright); }
+    .modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; transition: var(--transition); padding: 0.2rem; border-radius: 4px; }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-footer { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; flex-wrap: wrap; }
+    
+    .api-key-display { background: rgba(0,0,0,0.4); border: 1px solid rgba(99,179,237,0.3); border-radius: var(--radius-sm); padding: 1rem; font-family: var(--font-mono); font-size: 0.78rem; color: var(--aurora-cyan); word-break: break-all; line-height: 1.5; position: relative; margin: 0.75rem 0; }
+    .copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(99,179,237,0.15); border: 1px solid rgba(99,179,237,0.3); color: var(--aurora-cyan); cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-family: var(--font-sans); transition: var(--transition); }
+    .copy-btn:hover { background: rgba(99,179,237,0.25); }
+    
+    .confirm-danger { background: rgba(252,129,129,0.08); border: 1px solid rgba(252,129,129,0.25); border-radius: var(--radius-sm); padding: 1rem; color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem; }
+    .confirm-danger strong { color: var(--aurora-red); }
+    
+    .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-secondary); }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+    .empty-state p { font-size: 0.9rem; }
+    
+    #toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toast { background: var(--bg-glass); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem 1.25rem; font-size: 0.85rem; color: var(--text-primary); backdrop-filter: blur(12px); animation: slideInRight 0.3s ease; max-width: 320px; }
+    .toast.success { border-color: rgba(72,187,120,0.5); color: var(--aurora-green); }
+    .toast.error { border-color: rgba(252,129,129,0.5); color: var(--aurora-red); }
+    .toast.info { border-color: rgba(99,179,237,0.5); color: var(--aurora-cyan); }
+    @keyframes slideInRight { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    
+    .force-change-banner { background: rgba(246,173,85,0.1); border: 1px solid rgba(246,173,85,0.3); border-radius: var(--radius-sm); padding: 0.75rem 1.25rem; color: var(--aurora-orange); font-size: 0.85rem; display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; }
+    
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-left: 0; }
+      .page-content { padding: 1rem; }
+    }
+
+    /* ===========================
+       HOLOGRAPHIC / 3D DEPTH ENHANCEMENTS
+       (visual-only additions layered on top of the existing rules
+       above; no selector renamed, no ID touched)
+    =========================== */
+    .login-card, .sidebar, .topbar, .modal, .table-wrapper, .stat-card, .feed-card, .submit-form {
+      backdrop-filter: var(--depth-blur-mid);
+      -webkit-backdrop-filter: var(--depth-blur-mid);
+    }
+    .login-card { background: var(--glass-hi); border: 1px solid rgba(255,255,255,0.12); }
+    .sidebar, .topbar { background: var(--glass-hi); }
+    .stat-card, .feed-card, .table-wrapper, .submit-form { background: var(--glass-lo); }
+    .modal { background: var(--glass-hi); backdrop-filter: var(--depth-blur-hi); -webkit-backdrop-filter: var(--depth-blur-hi); }
+
+    .login-card, .stat-card, .feed-card, .table-wrapper, .modal, .nav-item {
+      transform-style: preserve-3d;
+      transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s cubic-bezier(0.4,0,0.2,1), border-color 0.25s ease;
+    }
+    .stat-card:hover, .feed-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-glow), var(--shadow-card); }
+    .nav-item:hover { transform: translateX(2px); }
+
+    /* Panel edge glow accent (top hairline) beyond the existing top-bar accent on stat-card */
+    .table-wrapper, .modal, .login-card {
+      position: relative;
+    }
+    .table-wrapper::before, .modal::before, .login-card::before {
+      content: ''; position: absolute; top: 0; left: 1px; right: 1px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(99,179,237,0.5), transparent);
+      border-radius: inherit; pointer-events: none;
+    }
+
+    /* Status/severity pulse for critical items — subtle, not strobing */
+    .badge-critical::before { animation: sevPulse 2.2s ease-in-out infinite; }
+    @keyframes sevPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(252,129,129,0.6); } 50% { box-shadow: 0 0 0 4px rgba(252,129,129,0); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .login-card, .stat-card, .feed-card, .table-wrapper, .modal, .nav-item { transition: none !important; }
+      .stat-card:hover, .feed-card:hover, .nav-item:hover { transform: none !important; }
+      .badge-critical::before { animation: none !important; }
+    }
+    @media (max-width: 768px) {
+      .login-card, .sidebar, .topbar, .modal, .table-wrapper, .stat-card, .feed-card, .submit-form {
+        backdrop-filter: var(--depth-blur-lo);
+        -webkit-backdrop-filter: var(--depth-blur-lo);
+      }
+      .stat-card:hover, .feed-card:hover, .nav-item:hover { transform: none; }
+    }
+
+    /* Signal-room visual refresh: presentation only; existing controls and IDs remain intact. */
+    body { background: radial-gradient(ellipse at 78% 0%, #e3eee2 0%, transparent 36%), var(--bg-base); }
+    body::before, body::after { display: none; }
+    .env-overlay {
+      background: linear-gradient(180deg, rgba(242,245,240,0.38), rgba(242,245,240,0.62));
+    }
+    .env-layer canvas { opacity: 0.18; mix-blend-mode: multiply; }
+    .env-grid { opacity: 0.34; }
+    .env-scanline { opacity: 0.035; }
+
+    .login-card {
+      background: rgba(255,255,255,0.97);
+      border: 1px solid rgba(31,56,44,0.13);
+      border-top: 3px solid #16805e;
+      border-radius: 10px;
+      box-shadow: 0 24px 70px rgba(24,49,36,0.16);
+    }
+    .login-logo .shield-icon {
+      border-radius: 10px;
+      background: #dff0d2;
+      box-shadow: none;
+      animation: none;
+    }
+    .login-tabs { background: #f0f4ee; border-radius: 6px; }
+    .login-tab.active { background: #ffffff; color: #176b61; box-shadow: 0 1px 4px rgba(29,55,42,0.12); }
+
+    .sidebar {
+      background: #173d34;
+      border-right: 1px solid rgba(255,255,255,0.08);
+      color: #f3f7f1;
+    }
+    .sidebar-brand { border-bottom-color: rgba(255,255,255,0.12); }
+    .brand-icon { background: #d9ed79; border-radius: 8px; color: #173d34; }
+    .brand-text h3, .user-name { color: #f4f7f2; }
+    .brand-text p, .nav-section-label { color: #a6bbb0; }
+    .nav-item { color: #d1ddd5; border-radius: 6px; }
+    .nav-item:hover { background: rgba(255,255,255,0.08); color: #ffffff; }
+    .nav-item.active {
+      background: #d9ed79;
+      border-color: #d9ed79;
+      color: #20382e;
+      font-weight: 700;
+    }
+    .nav-badge { background: rgba(217,237,121,0.16); color: #e2f79a; }
+    .nav-item.active .nav-badge { background: rgba(23,61,52,0.1); color: #173d34; }
+    .sidebar-footer { border-top-color: rgba(255,255,255,0.12); }
+    .user-avatar { background: #d9ed79; color: #173d34; }
+    .user-role { color: #c9e57c; }
+    .logout-btn { color: #c1d1c7; }
+
+    .main-content { min-width: 0; }
+    .topbar {
+      background: rgba(255,255,255,0.96);
+      border-bottom-color: #dfe7df;
+      box-shadow: 0 1px 4px rgba(29,55,42,0.035);
+    }
+    .topbar-title { color: #20372d; }
+    .page-content { width: 100%; max-width: 1600px; margin: 0 auto; }
+    .section-header h2 { color: #19372d; }
+    .stat-card, .feed-card, .table-wrapper, .submit-form {
+      background: rgba(255,255,255,0.94);
+      border-color: #dfe7df;
+      box-shadow: var(--shadow-card);
+    }
+    .stat-card { border-radius: 8px; }
+    .stat-card::before { background: linear-gradient(90deg, #16805e, #d9ed79); }
+    .stat-icon { font-size: 1.25rem; }
+    .stat-value { color: #18392d; }
+    .table-wrapper { border-radius: 8px; }
+    .table-header { background: #f8faf7; }
+    .table-title { color: #30473b; }
+    thead th { color: #77857a; }
+    tbody tr:hover { background: #f5f8f3; }
+    .feed-card { border-radius: 7px; }
+    .feed-card:hover { border-color: #b9d7c6; }
+    .feed-body h4 { color: #20372d; }
+    .form-control { background: #fbfcfa; border-color: #d8e1d8; color: #26372f; }
+    .form-control:focus { background: #ffffff; border-color: #16805e; box-shadow: 0 0 0 3px rgba(22,128,94,0.12); }
+    .btn-primary { background: #137d60; box-shadow: 0 4px 12px rgba(19,125,96,0.18); }
+    .btn-primary:hover:not(:disabled) { background: #0e6c53; box-shadow: 0 6px 16px rgba(19,125,96,0.24); }
+    .btn-secondary { background: #ffffff; border-color: #d9e2d9; color: #4f6257; }
+    .btn-secondary:hover:not(:disabled) { background: #f2f6f0; color: #26372f; }
+    .badge { letter-spacing: 0; }
+    .modal { background: #ffffff; border-color: #dfe7df; }
+
+    @media (max-width: 768px) {
+      .portal-layout.active { display: flex; flex-direction: column; }
+      .sidebar {
+        position: sticky;
+        top: 0;
+        width: 100%;
+        height: auto;
+        max-height: none;
+        transform: none;
+        z-index: 100;
+        backdrop-filter: none;
+      }
+      .sidebar-brand { padding: 0.8rem 1rem; }
+      .sidebar-nav { display: flex; gap: 0.25rem; padding: 0.45rem 0.5rem; overflow-x: auto; }
+      .sidebar-nav .nav-section-label { display: none; }
+      .nav-item { flex: 0 0 auto; margin: 0; padding: 0.55rem 0.7rem; white-space: nowrap; }
+      .sidebar-footer { padding: 0.35rem 0.75rem; }
+      .user-card { padding: 0.25rem; }
+      .user-avatar { width: 30px; height: 30px; }
+      .topbar { height: auto; min-height: 56px; padding: 0.65rem 1rem; gap: 0.75rem; }
+      .topbar-right { gap: 0.5rem; }
+      .topbar-badge { font-size: 0.62rem; }
+      .page-content { padding: 1rem; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
+      .stat-card { padding: 0.9rem; }
+      .stat-value { font-size: 1.55rem; }
+      .table-wrapper { overflow-x: auto; }
+      table { min-width: 620px; }
+      .section-header { margin-bottom: 1.25rem; }
+      .section-header h2 { font-size: 1.25rem; }
+      .submit-form { padding: 1.1rem; }
+      #toast-container { left: 1rem; right: 1rem; bottom: 1rem; }
+      .toast { max-width: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LIVE ENVIRONMENT LAYERS (purely decorative — never intercept clicks/keys) -->
+<!-- Environment 1: Login-only animated 3D network canvas -->
+<div class="env-layer" id="env-login">
+  <canvas id="login-background-canvas" aria-hidden="true"></canvas>
+  <div class="env-overlay"></div>
+  <div class="env-grid"></div>
+  <div class="env-scanline"></div>
+</div>
+<!-- Environment 2: Dashboard + all authenticated pages, live threat-network canvas -->
+<div class="env-layer" id="env-app">
+  <canvas id="dashboard-background-canvas" aria-hidden="true"></canvas>
+  <div class="env-overlay"></div>
+  <div class="env-grid"></div>
+  <div class="env-scanline"></div>
+</div>
+
+<div id="app">
+  <!-- LOGIN SCREEN -->
+  <div id="login-screen">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="shield-icon">🛡️</div>
+        <h1>Privacy Threat Network</h1>
+        <p>Secure Intelligence Sharing Platform</p>
+      </div>
+
+      <!-- Login Tabs -->
+      <div class="login-tabs">
+        <div class="login-tab active" id="tab-admin" onclick="switchLoginTab('admin')">Administrator</div>
+        <div class="login-tab" id="tab-client" onclick="switchLoginTab('client')">Client Organization</div>
+      </div>
+
+      <div id="login-error" class="alert-error"></div>
+
+      <!-- Admin Login Form -->
+      <form id="login-form-admin" onsubmit="handleAdminLogin(event)">
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" id="login-email" class="form-control" placeholder="admin@company.example" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="login-password" class="form-control" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn btn-primary" id="login-btn-admin">
+          <span id="login-btn-text-admin">Sign In</span>
+          <span id="login-spinner-admin" style="display:none"><span class="loading"></span></span>
+        </button>
+      </form>
+
+      <!-- Client Login Form -->
+      <form id="login-form-client" onsubmit="handleClientLogin(event)" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">Organization Name</label>
+          <input type="text" id="client-login-name" class="form-control" placeholder="Acme Security Corp" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">API Key</label>
+          <input type="password" id="client-login-key" class="form-control" placeholder="Paste your API key" required />
+        </div>
+        <button type="submit" class="btn btn-success" id="login-btn-client">
+          <span id="login-btn-text-client">Client Access</span>
+          <span id="login-spinner-client" style="display:none"><span class="loading"></span></span>
+        </button>
+      </form>
+
+      <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border);text-align:center">
+        <p style="font-size:0.72rem;color:var(--text-muted);">🔒 Platform activity and access IP are logged securely.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN LAYOUT -->
+  <div id="admin-layout" class="portal-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo"><div class="brand-icon">🛡️</div><div class="brand-text"><h3>Threat Network</h3><p>Admin Portal</p></div></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Overview</div>
+        <div class="nav-item active" id="nav-dashboard" onclick="showAdminSection('dashboard')"><span class="nav-icon">📊</span> Dashboard</div>
+        <div class="nav-item" id="nav-threat-feed" onclick="showAdminSection('threat-feed')"><span class="nav-icon">📡</span> Threat Intelligence</div>
+        <div class="nav-section-label" style="margin-top:0.5rem">Management</div>
+        <div class="nav-item" id="nav-clients" onclick="showAdminSection('clients')"><span class="nav-icon">🏢</span> Client Organizations <span class="nav-badge" id="sidebar-client-count">0</span></div>
+        <div class="nav-item" id="nav-admins" onclick="showAdminSection('admins')" style="display:none"><span class="nav-icon">👥</span> Administrators</div>
+        <div class="nav-section-label" style="margin-top:0.5rem">Security</div>
+        <div class="nav-item" id="nav-audit" onclick="showAdminSection('audit')"><span class="nav-icon">📋</span> Audit Logs</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-card">
+          <div class="user-avatar" id="user-avatar-text">A</div>
+          <div class="user-info">
+            <div class="user-name" id="sidebar-user-name">Administrator</div>
+            <div class="user-role" id="sidebar-user-role">ADMIN</div>
+          </div>
+          <button class="logout-btn" onclick="handleLogout()" title="Sign out">↩</button>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <header class="topbar">
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+        <div class="topbar-right">
+          <span class="topbar-badge">System Online</span>
+          <button class="btn btn-secondary btn-sm" onclick="refreshAdminSection()">↻ Refresh</button>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="force-change-banner" id="force-change-banner" style="display:none;">
+          ⚠️ <strong>Action required:</strong> You must change your temporary password.
+          <button class="btn btn-warning btn-sm" onclick="showChangePasswordModal()" style="margin-left:auto">Change Password</button>
+        </div>
+
+        <div class="section active" id="section-dashboard">
+          <div class="section-header">
+            <div><h2>Network Overview</h2><p>Real-time threat intelligence and platform statistics</p></div>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-icon">🗄️</div><div class="stat-value" id="stat-total">—</div><div class="stat-label">Total Reports</div></div>
+            <div class="stat-card critical"><div class="stat-icon">🚨</div><div class="stat-value" id="stat-critical">—</div><div class="stat-label">Critical</div></div>
+            <div class="stat-card high"><div class="stat-icon">⚠️</div><div class="stat-value" id="stat-high">—</div><div class="stat-label">High</div></div>
+            <div class="stat-card medium"><div class="stat-icon">🔶</div><div class="stat-value" id="stat-medium">—</div><div class="stat-label">Medium</div></div>
+            <div class="stat-card success"><div class="stat-icon">✅</div><div class="stat-value" id="stat-low">—</div><div class="stat-label">Low</div></div>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-icon">🏢</div><div class="stat-value" id="stat-total-clients">—</div><div class="stat-label">Total Clients</div></div>
+            <div class="stat-card success"><div class="stat-icon">🟢</div><div class="stat-value" id="stat-active-clients">—</div><div class="stat-label">Active Clients</div></div>
+            <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="stat-total-admins">—</div><div class="stat-label">Total Administrators</div></div>
+            <div class="stat-card success"><div class="stat-icon">🟢</div><div class="stat-value" id="stat-active-admins">—</div><div class="stat-label">Active Administrators</div></div>
+          </div>
+          <div class="table-wrapper">
+            <div class="table-header"><span class="table-title">📋 Recent Audit Activity</span></div>
+            <div id="dashboard-audit" style="padding:0.5rem 0;"></div>
+          </div>
+        </div>
+
+        <div class="section" id="section-threat-feed">
+          <div class="section-header">
+            <div><h2>Threat Intelligence Feed</h2><p>Sanitized threat reports — company identities and IPs are pseudonymized</p></div>
+          </div>
+          <div class="feed-grid" id="threat-feed-grid"><div class="empty-state"><div class="empty-icon">⏳</div><p>Loading...</p></div></div>
+        </div>
+
+        <div class="section" id="section-clients">
+          <div class="section-header">
+            <div><h2>Client Organizations</h2><p>Manage participating threat-intelligence organizations</p></div>
+            <button class="btn btn-primary" onclick="showAddClientModal()">＋ Add Client</button>
+          </div>
+          <div class="table-wrapper">
+            <div class="table-header"><span class="table-title">🏢 Registered Organizations</span></div>
+            <div id="clients-table-container"></div>
+          </div>
+        </div>
+
+        <div class="section" id="section-admins">
+          <div class="section-header">
+            <div><h2>Administrators</h2><p>Manage platform administrator accounts (MAIN_ADMIN only)</p></div>
+            <button class="btn btn-primary" onclick="showAddAdminModal()">＋ Add Administrator</button>
+          </div>
+          <div class="table-wrapper">
+            <div class="table-header"><span class="table-title">👥 Administrator Accounts</span></div>
+            <div id="admins-table-container"></div>
+          </div>
+        </div>
+
+        <div class="section" id="section-audit">
+          <div class="section-header">
+            <div><h2>Audit Logs</h2><p>Immutable record of all administrative actions (IP addresses logged)</p></div>
+          </div>
+          <div class="table-wrapper">
+            <div id="audit-logs-container" style="padding:1rem 1.25rem;"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- CLIENT LAYOUT -->
+  <div id="client-layout" class="portal-layout">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo"><div class="brand-icon">🏢</div><div class="brand-text"><h3>Client Portal</h3><p>Threat Network</p></div></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">Operations</div>
+        <div class="nav-item active" id="nav-client-submit" onclick="showClientSection('submit')"><span class="nav-icon">🛡️</span> Submit Threat Data</div>
+        <div class="nav-item" id="nav-client-feed" onclick="showClientSection('feed')"><span class="nav-icon">📡</span> Network Threat Feed</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-card">
+          <div class="user-avatar" id="client-avatar-text">C</div>
+          <div class="user-info">
+            <div class="user-name" id="sidebar-client-name">Organization</div>
+            <div class="user-role">CLIENT Access</div>
+          </div>
+          <button class="logout-btn" onclick="handleLogout()" title="Sign out">↩</button>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <header class="topbar">
+        <div class="topbar-title" id="client-topbar-title">Submit Threat Data</div>
+        <div class="topbar-right">
+          <span class="topbar-badge">Connected securely</span>
+        </div>
+      </header>
+      <main class="page-content">
+
+        <!-- Client Submit Form -->
+        <div class="section active" id="client-section-submit">
+          <div class="section-header">
+            <div><h2>Submit Data Breach / Threat Report</h2><p>Your company name and IP will be immediately pseudonymized using HMAC-SHA256.</p></div>
+          </div>
+          
+          <div class="submit-form">
+            <div id="submit-error" class="alert-error"></div>
+            <div id="submit-success" class="alert-info" style="display:none; color:var(--aurora-green); border-color:var(--aurora-green); background:rgba(72,187,120,0.1)">
+              ✅ Threat submitted successfully! It has been anonymized and added to the network feed.
+            </div>
+
+            <form id="threat-submit-form" onsubmit="handleClientSubmit(event)">
+              <div class="form-group">
+                <label class="form-label">Internal IP Address</label>
+                <input type="text" id="threat-ip" class="form-control" placeholder="e.g. 192.168.1.50" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Attack Type Observed</label>
+                <input type="text" id="threat-attack" class="form-control" placeholder="e.g. SQL Injection, Ransomware, Brute Force" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Target Service</label>
+                <input type="text" id="threat-service" class="form-control" placeholder="e.g. SSH, Database, Web Server" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Failed Attempts / Scope</label>
+                <input type="number" id="threat-attempts" class="form-control" placeholder="100" required min="1" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Date & Time of Incident</label>
+                <input type="datetime-local" id="threat-time" class="form-control" required />
+              </div>
+              <button type="submit" class="btn btn-primary" id="submit-threat-btn">
+                <span id="submit-threat-text">Submit Threat Intelligence</span>
+                <span id="submit-threat-spinner" style="display:none"><span class="loading"></span></span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Client Feed -->
+        <div class="section" id="client-section-feed">
+          <div class="section-header">
+            <div><h2>Network Threat Feed</h2><p>Anonymized global intelligence from all network participants.</p></div>
+            <button class="btn btn-secondary btn-sm" onclick="loadClientFeed()">↻ Refresh</button>
+          </div>
+          <div class="feed-grid" id="client-feed-grid"><div class="empty-state"><div class="empty-icon">⏳</div><p>Loading...</p></div></div>
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<!-- Admin Modals -->
+<div class="modal-overlay" id="add-client-modal">
+  <div class="modal">
+    <div class="modal-header"><h3 class="modal-title">🏢 Add Client Organization</h3><button class="modal-close" onclick="closeModal('add-client-modal')">✕</button></div>
+    <div id="add-client-error" class="alert-error"></div>
+    <div class="form-group"><label class="form-label">Organization Name</label><input type="text" id="new-client-name" class="form-control" required /></div>
+    <div class="form-group"><label class="form-label">Contact Email</label><input type="email" id="new-client-email" class="form-control" required /></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('add-client-modal')">Cancel</button><button class="btn btn-primary" onclick="submitAddClient()" style="width:auto">Create Client</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="api-key-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header"><h3 class="modal-title">🔑 Client API Key</h3><button class="modal-close" onclick="closeModal('api-key-modal')">✕</button></div>
+    <div class="alert-warning">⚠️ <strong>Shown ONLY ONCE.</strong> Store securely.</div>
+    <p style="font-size:0.85rem;color:var(--text-secondary)">Client: <strong id="api-key-client-name" style="color:var(--text-primary)"></strong></p>
+    <div class="api-key-display" id="api-key-value"><button class="copy-btn" onclick="copyApiKey()">Copy</button><span id="api-key-text"></span></div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal('api-key-modal')" style="width:auto">✓ I've saved the key</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="add-admin-modal">
+  <div class="modal">
+    <div class="modal-header"><h3 class="modal-title">👤 Add Administrator</h3><button class="modal-close" onclick="closeModal('add-admin-modal')">✕</button></div>
+    <div id="add-admin-error" class="alert-error"></div>
+    <div class="form-group"><label class="form-label">Full Name</label><input type="text" id="new-admin-name" class="form-control" required /></div>
+    <div class="form-group"><label class="form-label">Email Address</label><input type="email" id="new-admin-email" class="form-control" required /></div>
+    <div class="form-group"><label class="form-label">Temporary Password</label><input type="password" id="new-admin-password" class="form-control" minlength="8" required /></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('add-admin-modal')">Cancel</button><button class="btn btn-primary" onclick="submitAddAdmin()" style="width:auto">Create Administrator</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <div class="modal-header"><h3 class="modal-title" id="confirm-title">Confirm Action</h3><button class="modal-close" onclick="closeModal('confirm-modal')">✕</button></div>
+    <div class="confirm-danger" id="confirm-body">Are you sure?</div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('confirm-modal')">Cancel</button><button class="btn btn-danger" onclick="confirmAction()">Confirm</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// State
+let _accessToken = null;
+let _currentRole = null; 
+let _clientKey = null;
+let _clientName = null;
+
+let _pendingAction = null;
+
+// Live environment switching (purely visual — never touches auth/token/state)
+const _envLogin = document.getElementById('env-login');
+const _envApp = document.getElementById('env-app');
+const _reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------------------------------------------------------------
+   Animated 3D threat-network canvas engine.
+   Nodes drift in a pseudo-3D field (z-depth affects size/opacity/
+   parallax) and nearby nodes connect with faint edges, evoking a
+   live intelligence-sharing network. Two independently-tuned
+   instances back the login screen (calm/sparse) and the
+   authenticated app (denser, with occasional "alert" pulses).
+   Purely decorative: never intercepts input, never touches state.
+--------------------------------------------------------------- */
+function createNetworkField(canvasId, opts) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  let w = 0, h = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+  let nodes = [];
+  let raf = null;
+  let running = false;
+  let lastPulse = 0;
+
+  const cfg = Object.assign({
+    count: 46,
+    linkDist: 150,
+    speed: 0.12,
+    palette: ['99,179,237', '102,126,234', '56,178,172'],
+    alertColor: '252,129,129',
+    alertChance: 0.0018
+  }, opts);
+
+  function resize() {
+    w = canvas.clientWidth || window.innerWidth;
+    h = canvas.clientHeight || window.innerHeight;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function seed() {
+    nodes = Array.from({ length: cfg.count }, () => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      z: 0.25 + Math.random() * 0.75,
+      vx: (Math.random() - 0.5) * cfg.speed,
+      vy: (Math.random() - 0.5) * cfg.speed,
+      c: cfg.palette[(Math.random() * cfg.palette.length) | 0],
+      alert: 0
+    }));
+  }
+
+  function step() {
+    ctx.clearRect(0, 0, w, h);
+
+    // occasional threat "alert" pulse on a random node
+    if (Math.random() < cfg.alertChance && nodes.length) {
+      nodes[(Math.random() * nodes.length) | 0].alert = 1;
+    }
+
+    // edges first (behind nodes)
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j];
+        const dx = a.x - b.x, dy = a.y - b.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < cfg.linkDist) {
+          const depth = (a.z + b.z) / 2;
+          const alpha = (1 - dist / cfg.linkDist) * 0.22 * depth;
+          ctx.strokeStyle = `rgba(${a.c},${alpha})`;
+          ctx.lineWidth = 0.6 * depth;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // nodes
+    for (const n of nodes) {
+      n.x += n.vx; n.y += n.vy;
+      if (n.x < -20) n.x = w + 20; if (n.x > w + 20) n.x = -20;
+      if (n.y < -20) n.y = h + 20; if (n.y > h + 20) n.y = -20;
+      if (n.alert > 0) n.alert = Math.max(0, n.alert - 0.012);
+
+      const r = 1.3 + n.z * 2.2;
+      const color = n.alert > 0 ? cfg.alertColor : n.c;
+      const glow = n.alert > 0 ? (0.35 + n.alert * 0.5) : 0.35 * n.z;
+
+      ctx.beginPath();
+      ctx.fillStyle = `rgba(${color},${0.55 + n.z * 0.3})`;
+      ctx.shadowColor = `rgba(${color},${glow})`;
+      ctx.shadowBlur = n.alert > 0 ? 14 : 6;
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+
+    if (running) raf = requestAnimationFrame(step);
+  }
+
+  function drawStaticFrame() { resize(); seed(); step(); }
+
+  function start() {
+    if (running) return;
+    resize(); seed();
+    running = true;
+    raf = requestAnimationFrame(step);
+  }
+  function stop() {
+    running = false;
+    if (raf) cancelAnimationFrame(raf);
+  }
+
+  window.addEventListener('resize', () => { const wasRunning = running; resize(); if (wasRunning) seed(); });
+
+  if (_reduceMotion) { drawStaticFrame(); return { start(){}, stop(){} }; }
+  return { start, stop };
+}
+
+const _fieldLogin = createNetworkField('login-background-canvas', {
+  count: 34, linkDist: 130, speed: 0.08,
+  palette: ['99,179,237', '102,126,234'], alertChance: 0.0006
+});
+const _fieldApp = createNetworkField('dashboard-background-canvas', {
+  count: 56, linkDist: 160, speed: 0.14,
+  palette: ['99,179,237', '102,126,234', '56,178,172'], alertChance: 0.0022
+});
+
+function enterAppEnvironment() {
+  _envApp.classList.add('active');
+  _envLogin.style.display = 'none';
+  _fieldLogin.stop();
+  _fieldApp.start();
+}
+function enterLoginEnvironment() {
+  _envApp.classList.remove('active');
+  _envLogin.style.display = '';
+  _fieldApp.stop();
+  _fieldLogin.start();
+}
+// Kick off the login environment on initial page load.
+enterLoginEnvironment();
+
+// Utils
+const formatDate = iso => iso ? new Date(iso).toLocaleString() : '—';
+const escHtml = str => String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const toast = (msg, type='info', ms=3500) => {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div'); el.className = `toast ${type}`; el.textContent = msg;
+  c.appendChild(el); setTimeout(() => { el.style.opacity=0; setTimeout(()=>el.remove(),300); }, ms);
+};
+const showError = (id, msg) => { const e = document.getElementById(id); e.textContent = msg; e.style.display = 'block'; }
+const clearError = (id) => { document.getElementById(id).style.display = 'none'; }
+const openModal = id => document.getElementById(id).classList.add('show');
+const closeModal = id => document.getElementById(id).classList.remove('show');
+
+async function apiFetch(path, opts={}) {
+  const headers = { 'Content-Type': 'application/json', ...opts.headers };
+  if (_accessToken) headers['Authorization'] = `Bearer ${_accessToken}`;
+  if (_clientKey) headers['X-API-Key'] = _clientKey;
+  const resp = await fetch(path, { ...opts, headers });
+  if (resp.status === 401 || resp.status === 403) {
+    if (_accessToken || _clientKey) handleLogout();
+    throw new Error('Unauthorized');
+  }
+  return resp;
+}
+
+// Login logic
+function switchLoginTab(type) {
+  document.querySelectorAll('.login-tab').forEach(e => e.classList.remove('active'));
+  document.getElementById(`tab-${type}`).classList.add('active');
+  document.getElementById('login-form-admin').style.display = type === 'admin' ? 'block' : 'none';
+  document.getElementById('login-form-client').style.display = type === 'client' ? 'block' : 'none';
+  clearError('login-error');
+}
+
+async function handleAdminLogin(e) {
+  e.preventDefault(); clearError('login-error');
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  try {
+    const resp = await fetch('/api/admin/login', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, password})});
+    if (!resp.ok) { const b = await resp.json().catch(()=>{}); throw new Error(b.detail || 'Invalid credentials'); }
+    const data = await resp.json();
+    _accessToken = data.access_token; _currentRole = data.role;
+    document.getElementById('sidebar-user-name').textContent = data.name;
+    document.getElementById('sidebar-user-role').textContent = data.role;
+    document.getElementById('user-avatar-text').textContent = data.name[0].toUpperCase();
+    document.getElementById('nav-admins').style.display = data.role === 'MAIN_ADMIN' ? 'flex' : 'none';
+    
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-layout').classList.add('active');
+    showAdminSection('dashboard');
+    enterAppEnvironment();
+  } catch (err) { showError('login-error', err.message); }
+}
+
+async function handleClientLogin(e) {
+  e.preventDefault(); clearError('login-error');
+  const display_name = document.getElementById('client-login-name').value;
+  const api_key = document.getElementById('client-login-key').value;
+  try {
+    const resp = await fetch('/api/client/login', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({display_name, api_key})});
+    if (!resp.ok) { const b = await resp.json().catch(()=>{}); throw new Error(b.detail || 'Invalid credentials'); }
+    const data = await resp.json();
+    _clientKey = api_key;
+    _clientName = data.display_name;
+    
+    document.getElementById('sidebar-client-name').textContent = _clientName;
+    document.getElementById('client-avatar-text').textContent = _clientName[0].toUpperCase();
+    
+    // Auto-fill time
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('threat-time').value = now.toISOString().slice(0,16);
+
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('client-layout').classList.add('active');
+    showClientSection('submit');
+    enterAppEnvironment();
+  } catch(err) { showError('login-error', err.message); }
+}
+
+function handleLogout() {
+  _accessToken = null; _currentRole = null; _clientKey = null; _clientName = null;
+  document.getElementById('admin-layout').classList.remove('active');
+  document.getElementById('client-layout').classList.remove('active');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+  document.getElementById('client-login-key').value = '';
+  enterLoginEnvironment();
+}
+
+// Admin UI
+function showAdminSection(name) {
+  document.querySelectorAll('#admin-layout .section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#admin-layout .nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`section-${name}`).classList.add('active');
+  document.getElementById(`nav-${name}`).classList.add('active');
+  refreshAdminSection(name);
+}
+function refreshAdminSection(name = document.querySelector('#admin-layout .section.active').id.replace('section-','')) {
+  if(name==='dashboard') loadDashboard();
+  if(name==='clients') loadClients();
+  if(name==='admins') loadAdmins();
+  if(name==='audit') loadAuditLogs();
+  if(name==='threat-feed') loadAdminFeed();
+}
+
+async function loadDashboard() {
+  try {
+    const resp = await apiFetch('/api/admin/dashboard');
+    if(!resp.ok) return;
+    const d = await resp.json();
+    ['total','critical','high','medium','low'].forEach(k => document.getElementById(`stat-${k}`).textContent = d[`${k}_reports`]);
+    document.getElementById('stat-total-clients').textContent = d.total_clients;
+    document.getElementById('stat-active-clients').textContent = d.active_clients;
+    document.getElementById('stat-total-admins').textContent = d.total_admins;
+    document.getElementById('stat-active-admins').textContent = d.active_admins;
+    
+    const logs = await (await apiFetch('/api/admin/audit-logs?limit=8')).json();
+    document.getElementById('dashboard-audit').innerHTML = logs.logs.map(renderAuditItem).join('');
+  } catch(e){}
+}
+
+async function loadClients() {
+  const cnt = document.getElementById('clients-table-container');
+  try {
+    const res = await (await apiFetch('/api/admin/clients')).json();
+    document.getElementById('sidebar-client-count').textContent = res.clients.filter(c=>c.status==='ACTIVE').length;
+    cnt.innerHTML = `<table><thead><tr><th>Organization</th><th>Status</th><th>Last Seen IP</th><th>Actions</th></tr></thead><tbody>
+      ${res.clients.map(c => `<tr>
+        <td><b>${escHtml(c.display_name)}</b><br><span style="font-size:0.7rem;color:var(--text-muted)">${escHtml(c.client_id)}</span></td>
+        <td><span class="badge badge-${c.status.toLowerCase()}">${c.status}</span></td>
+        <td class="td-mono">${escHtml(c.last_login_ip || 'Never')}</td>
+        <td>
+          ${c.status === 'ACTIVE' ? `<button class="btn btn-warning btn-sm" onclick="suspendClient('${c.client_id}')">Suspend</button>` : ''}
+          ${c.status === 'SUSPENDED' ? `<button class="btn btn-success btn-sm" onclick="activateClient('${c.client_id}')">Activate</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="revokeClient('${c.client_id}')">Revoke</button>
+        </td>
+      </tr>`).join('')}
+    </tbody></table>`;
+  } catch(e) {}
+}
+
+async function loadAdmins() {
+  const cnt = document.getElementById('admins-table-container');
+  try {
+    const res = await (await apiFetch('/api/admin/admins')).json();
+    cnt.innerHTML = `<table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead><tbody>
+      ${res.admins.map(a => `<tr>
+        <td><b>${escHtml(a.name)}</b></td><td>${escHtml(a.email)}</td>
+        <td><span class="badge badge-${a.role==='MAIN_ADMIN'?'main-admin':'admin'}">${a.role}</span></td>
+        <td><span class="badge badge-${a.is_active?'active':'inactive'}">${a.is_active?'ACTIVE':'INACTIVE'}</span></td>
+      </tr>`).join('')}
+    </tbody></table>`;
+  } catch(e){}
+}
+
+async function loadAuditLogs() {
+  try {
+    const res = await (await apiFetch('/api/admin/audit-logs?limit=50')).json();
+    document.getElementById('audit-logs-container').innerHTML = res.logs.map(renderAuditItem).join('');
+  } catch(e){}
+}
+
+function renderAuditItem(l) {
+  const i = {
+    CLIENT_LOGIN: {c:'success',i:'🟢'}, CLIENT_CREATED: {c:'success',i:'🏢'}, 
+    ADMIN_LOGIN_SUCCESS: {c:'success',i:'✅'}
+  }[l.action] || {c:'info',i:'📋'};
+  return `<div class="audit-item"><div class="audit-icon ${i.c}">${i.i}</div>
+    <div class="audit-body"><div class="audit-action">${escHtml(l.action)}</div>
+    <div class="audit-summary">${escHtml(l.metadata_summary||'')}</div></div>
+    <div class="audit-time">${formatDate(l.created_at)}</div></div>`;
+}
+
+// Client UI Actions
+function showClientSection(name) {
+  document.querySelectorAll('#client-layout .section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#client-layout .nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`client-section-${name}`).classList.add('active');
+  document.getElementById(`nav-client-${name}`).classList.add('active');
+  if(name==='feed') loadClientFeed();
+}
+
+async function handleClientSubmit(e) {
+  e.preventDefault();
+  clearError('submit-error');
+  document.getElementById('submit-success').style.display = 'none';
+  
+  const payload = {
+    company_name: _clientName,
+    internal_ip: document.getElementById('threat-ip').value,
+    attack_type: document.getElementById('threat-attack').value,
+    target_service: document.getElementById('threat-service').value,
+    failed_attempts: parseInt(document.getElementById('threat-attempts').value),
+    timestamp: new Date(document.getElementById('threat-time').value).toISOString()
+  };
+
+  try {
+    const resp = await apiFetch('/api/ingest-log', { method:'POST', body: JSON.stringify(payload) });
+    if(!resp.ok) throw new Error('Submission failed');
+    document.getElementById('threat-submit-form').reset();
+    document.getElementById('submit-success').style.display = 'block';
+    toast('Threat data submitted & anonymized!', 'success');
+  } catch(err) { showError('submit-error', err.message); }
+}
+
+async function renderFeed(containerId, endpointPath) {
+  try {
+    const data = await (await apiFetch(endpointPath)).json();
+    document.getElementById(containerId).innerHTML = data.reports.map(r => `
+      <div class="feed-card">
+        <div class="feed-severity" style="color:var(--aurora-${r.severity==='CRITICAL'?'red':r.severity==='HIGH'?'orange':r.severity==='MEDIUM'?'yellow':'green'})">${r.severity}</div>
+        <div class="feed-body">
+          <h4>${escHtml(r.threat_type)}</h4><p>${escHtml(r.attack_pattern)}</p>
+          <p style="font-size:0.75rem">Target: <b>${escHtml(r.target_service)}</b> | Impact: <b>${r.impact_percentage}%</b> | Conf: <b>${(r.confidence*100).toFixed(0)}%</b></p>
+          <p style="font-size:0.75rem;color:var(--text-muted)">💡 ${escHtml(r.mitigation)}</p>
+        </div>
+        <div class="feed-meta"><span class="badge badge-${r.severity.toLowerCase()}">${r.severity}</span><div class="feed-time" style="margin-top:5px">${formatDate(r.created_at)}</div></div>
+      </div>
+    `).join('') || '<p>No threats yet.</p>';
+  } catch(e){}
+}
+const loadAdminFeed = () => renderFeed('threat-feed-grid', '/api/admin/threat-feed');
+const loadClientFeed = () => renderFeed('client-feed-grid', '/api/threat-feed');
+
+// Admin Modals
+function showAddClientModal() { openModal('add-client-modal'); }
+async function submitAddClient() {
+  const display_name = document.getElementById('new-client-name').value;
+  const contact_email = document.getElementById('new-client-email').value;
+  const resp = await apiFetch('/api/admin/clients', {method:'POST', body:JSON.stringify({display_name,contact_email})});
+  if(resp.ok) {
+    const d = await resp.json(); closeModal('add-client-modal');
+    document.getElementById('api-key-client-name').textContent = d.display_name;
+    document.getElementById('api-key-text').textContent = d.api_key;
+    openModal('api-key-modal'); loadClients();
+  }
+}
+function copyApiKey() { navigator.clipboard.writeText(document.getElementById('api-key-text').textContent); toast('Copied'); }
+
+async function suspendClient(id) { await apiFetch(`/api/admin/clients/${id}/suspend`,{method:'PATCH'}); loadClients(); }
+async function activateClient(id) { await apiFetch(`/api/admin/clients/${id}/activate`,{method:'PATCH'}); loadClients(); }
+async function revokeClient(id) { await apiFetch(`/api/admin/clients/${id}`,{method:'DELETE'}); loadClients(); }
+
+</script>
+</body>
+</html>
